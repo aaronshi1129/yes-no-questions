@@ -1,0 +1,763 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yes/No Questions</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f4f8;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .draggable {
+            cursor: grab;
+            user-select: none;
+        }
+        .draggable:active {
+            cursor: grabbing;
+        }
+        .droppable {
+            transition: all 0.2s ease;
+        }
+        .droppable.highlight {
+            background-color: #e0f2fe !important;
+            transform: scale(1.02);
+        }
+        .warning {
+            animation: shake 0.5s;
+        }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-5px); }
+            40%, 80% { transform: translateX(5px); }
+        }
+        .success-animation {
+            animation: success-pulse 0.5s;
+        }
+        @keyframes success-pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        .shuffle-animation {
+            animation: shuffle 0.8s ease-in-out;
+        }
+        @keyframes shuffle {
+            0% { transform: translateX(0) translateY(0) rotate(0deg); }
+            25% { transform: translateX(10px) translateY(-10px) rotate(5deg); }
+            50% { transform: translateX(-5px) translateY(5px) rotate(-3deg); }
+            75% { transform: translateX(5px) translateY(-5px) rotate(2deg); }
+            100% { transform: translateX(0) translateY(0) rotate(0deg); }
+        }
+        .main-content {
+            flex: 1;
+        }
+        footer {
+            margin-top: auto;
+        }
+        .word-piece {
+            transition: all 0.3s ease;
+        }
+        .question-slot {
+            min-height: 60px;
+            border: 2px dashed #cbd5e1;
+        }
+        .question-slot.filled {
+            border: 2px solid #94a3b8;
+        }
+        .fade-in {
+            animation: fadeIn 0.5s;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        .bounce {
+            animation: bounce 0.5s;
+        }
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.5s;
+        }
+    </style>
+</head>
+<body>
+    <div class="main-content container mx-auto px-4 py-8 max-w-6xl">
+        <h1 class="text-3xl font-bold text-center text-indigo-700 mb-2">Yes/No Questions</h1>
+        <p class="text-center text-gray-600 mb-4">Practice forming Yes/No questions in English</p>
+        
+        <!-- Game Mode Tabs -->
+        <div class="mb-6">
+            <div class="flex justify-center mb-4">
+                <button id="tab-unscramble" class="px-6 py-2 bg-indigo-600 text-white font-medium rounded-l-lg">Unscramble</button>
+                <button id="tab-transform" class="px-6 py-2 bg-indigo-300 text-indigo-800 font-medium rounded-r-lg">Transform</button>
+            </div>
+        </div>
+        
+        <!-- Unscramble Game -->
+        <div id="unscramble-game" class="tab-content active">
+            <div class="bg-white rounded-xl shadow-lg p-6 mb-8">
+                <div class="flex justify-between items-center mb-4">
+                    <div class="text-lg font-bold text-indigo-700">Level: <span id="level-display">1</span></div>
+                    <div class="text-lg font-bold text-indigo-700">Score: <span id="score-display">0</span></div>
+                </div>
+                
+                <div class="mb-6">
+                    <h2 class="text-xl font-semibold text-gray-700 mb-2">Instructions:</h2>
+                    <p class="text-gray-600">Drag the words to form a correct Yes/No question. Then click "Check" to see if you're right!</p>
+                    <p class="text-gray-500">拖動單詞形成正確的是非問句。然後點擊"Check"按鈕檢查答案！</p>
+                </div>
+                
+                <div class="bg-indigo-50 p-4 rounded-lg mb-6">
+                    <h3 class="text-lg font-semibold text-indigo-700 mb-2">Question Area</h3>
+                    <div id="question-container" class="question-slot flex flex-wrap gap-2 p-3 rounded-lg bg-white min-h-[60px]"></div>
+                </div>
+                
+                <div class="mb-6">
+                    <h3 class="text-lg font-semibold text-indigo-700 mb-2">Word Bank</h3>
+                    <div id="word-bank" class="flex flex-wrap gap-2 justify-center"></div>
+                </div>
+                
+                <div class="flex justify-center gap-4">
+                    <button id="check-btn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg transition-colors">
+                        Check
+                    </button>
+                    <button id="reset-btn" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-6 rounded-lg transition-colors">
+                        Reset
+                    </button>
+                    <button id="next-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg transition-colors hidden">
+                        Next Question
+                    </button>
+                </div>
+            </div>
+            
+            <div id="feedback-container" class="bg-white rounded-xl shadow-lg p-6 mb-8 hidden">
+                <h2 class="text-xl font-bold text-center mb-4" id="feedback-title"></h2>
+                <p class="text-center mb-4" id="feedback-message"></p>
+                <div class="flex justify-center">
+                    <div class="bg-gray-100 p-4 rounded-lg max-w-md">
+                        <h3 class="font-semibold mb-2">Grammar Point:</h3>
+                        <p id="grammar-explanation" class="text-gray-700"></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Transform Game -->
+        <div id="transform-game" class="tab-content">
+            <div class="bg-white rounded-xl shadow-lg p-6 mb-8">
+                <div class="flex justify-between items-center mb-4">
+                    <div class="text-lg font-bold text-indigo-700">Level: <span id="transform-level-display">1</span></div>
+                    <div class="text-lg font-bold text-indigo-700">Score: <span id="transform-score-display">0</span></div>
+                </div>
+                
+                <div class="mb-6">
+                    <h2 class="text-xl font-semibold text-gray-700 mb-2">Instructions:</h2>
+                    <p class="text-gray-600">Transform the statement into a Yes/No question. Type your answer in the box below.</p>
+                    <p class="text-gray-500">將陳述句轉換為是非問句。在下面的框中輸入你的答案。</p>
+                </div>
+                
+                <div class="bg-indigo-50 p-4 rounded-lg mb-6">
+                    <h3 class="text-lg font-semibold text-indigo-700 mb-2">Statement:</h3>
+                    <div id="statement-container" class="p-3 rounded-lg bg-white text-lg font-medium text-gray-700"></div>
+                </div>
+                
+                <div class="mb-6">
+                    <h3 class="text-lg font-semibold text-indigo-700 mb-2">Your Answer:</h3>
+                    <input type="text" id="transform-answer" class="w-full p-3 border border-gray-300 rounded-lg text-lg" placeholder="Type your question here...">
+                </div>
+                
+                <div class="flex justify-center gap-4">
+                    <button id="transform-check-btn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg transition-colors">
+                        Check
+                    </button>
+                    <button id="transform-next-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg transition-colors hidden">
+                        Next Question
+                    </button>
+                </div>
+            </div>
+            
+            <div id="transform-feedback-container" class="bg-white rounded-xl shadow-lg p-6 mb-8 hidden">
+                <h2 class="text-xl font-bold text-center mb-4" id="transform-feedback-title"></h2>
+                <p class="text-center mb-4" id="transform-feedback-message"></p>
+                <div class="flex justify-center">
+                    <div class="bg-gray-100 p-4 rounded-lg max-w-md">
+                        <h3 class="font-semibold mb-2">Grammar Point:</h3>
+                        <p id="transform-grammar-explanation" class="text-gray-700"></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="bg-indigo-100 rounded-xl p-6 mb-8">
+            <h2 class="text-xl font-bold text-indigo-700 mb-4">Yes/No Questions Guide</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="bg-white p-4 rounded-lg shadow">
+                    <h3 class="font-bold text-indigo-600 mb-2">Structure</h3>
+                    <p class="mb-2">Yes/No questions start with an auxiliary verb (be, do, have, can, etc.) followed by the subject.</p>
+                    <p class="mb-2 text-gray-600">是非問句以助動詞（be, do, have, can等）開頭，後接主語。</p>
+                    <ul class="list-disc pl-5">
+                        <li>Auxiliary + Subject + Main Verb + ...?</li>
+                        <li>Is she coming to the party?</li>
+                        <li>Do you like pizza?</li>
+                    </ul>
+                </div>
+                <div class="bg-white p-4 rounded-lg shadow">
+                    <h3 class="font-bold text-indigo-600 mb-2">Common Auxiliaries</h3>
+                    <p class="mb-2 text-gray-600">常見的助動詞：</p>
+                    <ul class="list-disc pl-5">
+                        <li>Be: am, is, are, was, were</li>
+                        <li>Do: do, does, did</li>
+                        <li>Have: have, has, had</li>
+                        <li>Modals: can, could, will, would, should, may, might, must</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <footer class="bg-indigo-800 text-indigo-100 py-6 mt-8">
+        <div class="container mx-auto px-4">
+            <div class="flex flex-col md:flex-row justify-center items-center space-y-4 md:space-y-0">
+                <div class="flex flex-col md:flex-row items-center space-y-3 md:space-y-0 md:space-x-6">
+                    <div class="flex items-center space-x-4">
+                        <a href="https://www.aaronshi.cc" target="_blank" rel="noopener noreferrer" class="flex items-center hover:text-white transition duration-300">
+                            <span>Go to AaronShi.cc</span>
+                        </a>
+                        <span class="text-indigo-300">|</span>
+                        <a href="https://app.aaronshi.cc" target="_blank" rel="noopener noreferrer" class="flex items-center hover:text-white transition duration-300">
+                            <span>Back to AaronShi.cc App</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Tab switching
+            const tabUnscramble = document.getElementById('tab-unscramble');
+            const tabTransform = document.getElementById('tab-transform');
+            const unscrambleGame = document.getElementById('unscramble-game');
+            const transformGame = document.getElementById('transform-game');
+            
+            tabUnscramble.addEventListener('click', function() {
+                tabUnscramble.classList.remove('bg-indigo-300', 'text-indigo-800');
+                tabUnscramble.classList.add('bg-indigo-600', 'text-white');
+                tabTransform.classList.remove('bg-indigo-600', 'text-white');
+                tabTransform.classList.add('bg-indigo-300', 'text-indigo-800');
+                
+                unscrambleGame.classList.add('active');
+                transformGame.classList.remove('active');
+            });
+            
+            tabTransform.addEventListener('click', function() {
+                tabTransform.classList.remove('bg-indigo-300', 'text-indigo-800');
+                tabTransform.classList.add('bg-indigo-600', 'text-white');
+                tabUnscramble.classList.remove('bg-indigo-600', 'text-white');
+                tabUnscramble.classList.add('bg-indigo-300', 'text-indigo-800');
+                
+                transformGame.classList.add('active');
+                unscrambleGame.classList.remove('active');
+            });
+            
+            // UNSCRAMBLE GAME
+            // Game state
+            let currentLevel = 1;
+            let score = 0;
+            let currentQuestionIndex = 0;
+            
+            // Game elements
+            const questionContainer = document.getElementById('question-container');
+            const wordBank = document.getElementById('word-bank');
+            const checkBtn = document.getElementById('check-btn');
+            const resetBtn = document.getElementById('reset-btn');
+            const nextBtn = document.getElementById('next-btn');
+            const feedbackContainer = document.getElementById('feedback-container');
+            const feedbackTitle = document.getElementById('feedback-title');
+            const feedbackMessage = document.getElementById('feedback-message');
+            const grammarExplanation = document.getElementById('grammar-explanation');
+            const levelDisplay = document.getElementById('level-display');
+            const scoreDisplay = document.getElementById('score-display');
+            
+            // Questions by level
+            const questions = [
+                // Level 1
+                [
+                    {
+                        words: ['Is', 'she', 'a', 'student', '?'],
+                        correctOrder: ['Is', 'she', 'a', 'student', '?'],
+                        explanation: "This is a Yes/No question using 'be' verb (is). It follows the structure: Be + Subject + Complement + ?",
+                        translation: "她是學生嗎？"
+                    },
+                    {
+                        words: ['Do', 'you', 'like', 'coffee', '?'],
+                        correctOrder: ['Do', 'you', 'like', 'coffee', '?'],
+                        explanation: "This is a Yes/No question using 'do' as an auxiliary. It follows the structure: Do/Does + Subject + Verb + Object + ?",
+                        translation: "你喜歡咖啡嗎？"
+                    },
+                    {
+                        words: ['Are', 'they', 'coming', 'to', 'the', 'party', '?'],
+                        correctOrder: ['Are', 'they', 'coming', 'to', 'the', 'party', '?'],
+                        explanation: "This is a Yes/No question using 'be' verb (are) with present continuous. Structure: Be + Subject + Verb-ing + ?",
+                        translation: "他們要來參加派對嗎？"
+                    }
+                ],
+                // Level 2
+                [
+                    {
+                        words: ['Can', 'he', 'speak', 'Chinese', '?'],
+                        correctOrder: ['Can', 'he', 'speak', 'Chinese', '?'],
+                        explanation: "This is a Yes/No question using the modal verb 'can'. Structure: Modal + Subject + Verb + ?",
+                        translation: "他會說中文嗎？"
+                    },
+                    {
+                        words: ['Have', 'you', 'finished', 'your', 'homework', '?'],
+                        correctOrder: ['Have', 'you', 'finished', 'your', 'homework', '?'],
+                        explanation: "This is a Yes/No question using 'have' as an auxiliary with present perfect. Structure: Have/Has + Subject + Past Participle + ?",
+                        translation: "你完成作業了嗎？"
+                    },
+                    {
+                        words: ['Did', 'they', 'go', 'to', 'the', 'beach', '?'],
+                        correctOrder: ['Did', 'they', 'go', 'to', 'the', 'beach', '?'],
+                        explanation: "This is a Yes/No question using 'did' for past tense. Structure: Did + Subject + Base Verb + ?",
+                        translation: "他們去海灘了嗎？"
+                    }
+                ],
+                // Level 3
+                [
+                    {
+                        words: ['Will', 'she', 'be', 'attending', 'the', 'conference', '?'],
+                        correctOrder: ['Will', 'she', 'be', 'attending', 'the', 'conference', '?'],
+                        explanation: "This is a Yes/No question using 'will' with future continuous. Structure: Will + Subject + be + Verb-ing + ?",
+                        translation: "她會參加會議嗎？"
+                    },
+                    {
+                        words: ['Has', 'he', 'been', 'working', 'here', 'for', 'long', '?'],
+                        correctOrder: ['Has', 'he', 'been', 'working', 'here', 'for', 'long', '?'],
+                        explanation: "This is a Yes/No question using present perfect continuous. Structure: Has/Have + Subject + been + Verb-ing + ?",
+                        translation: "他在這裡工作很久了嗎？"
+                    },
+                    {
+                        words: ['Would', 'you', 'mind', 'opening', 'the', 'window', '?'],
+                        correctOrder: ['Would', 'you', 'mind', 'opening', 'the', 'window', '?'],
+                        explanation: "This is a polite Yes/No question using 'would'. Structure: Would + Subject + Verb + ?",
+                        translation: "你介意打開窗戶嗎？"
+                    }
+                ]
+            ];
+            
+            // Initialize game
+            function initGame() {
+                loadQuestion();
+                updateLevelDisplay();
+                updateScoreDisplay();
+                
+                // Event listeners
+                checkBtn.addEventListener('click', checkAnswer);
+                resetBtn.addEventListener('click', resetQuestion);
+                nextBtn.addEventListener('click', nextQuestion);
+            }
+            
+            // Load current question
+            function loadQuestion() {
+                // Clear containers
+                questionContainer.innerHTML = '';
+                wordBank.innerHTML = '';
+                
+                // Get current question
+                const levelQuestions = questions[currentLevel - 1];
+                const currentQuestion = levelQuestions[currentQuestionIndex];
+                
+                // Shuffle words
+                const shuffledWords = [...currentQuestion.words].sort(() => Math.random() - 0.5);
+                
+                // Create word elements
+                shuffledWords.forEach(word => {
+                    const wordElement = document.createElement('div');
+                    wordElement.className = 'word-piece draggable bg-indigo-200 p-2 rounded-md shadow-sm text-center font-medium text-gray-800 cursor-grab';
+                    wordElement.textContent = word;
+                    wordElement.draggable = true;
+                    wordElement.dataset.word = word;
+                    
+                    // Add drag events
+                    wordElement.addEventListener('dragstart', dragStart);
+                    
+                    wordBank.appendChild(wordElement);
+                });
+                
+                // Make question container droppable
+                questionContainer.addEventListener('dragover', dragOver);
+                questionContainer.addEventListener('dragenter', dragEnter);
+                questionContainer.addEventListener('dragleave', dragLeave);
+                questionContainer.addEventListener('drop', drop);
+                
+                // Hide feedback and next button
+                feedbackContainer.classList.add('hidden');
+                nextBtn.classList.add('hidden');
+            }
+            
+            // Drag and drop functions
+            function dragStart(e) {
+                e.dataTransfer.setData('text/plain', e.target.dataset.word);
+                setTimeout(() => {
+                    e.target.classList.add('opacity-50');
+                }, 0);
+            }
+            
+            function dragOver(e) {
+                e.preventDefault();
+            }
+            
+            function dragEnter(e) {
+                e.preventDefault();
+                questionContainer.classList.add('highlight');
+            }
+            
+            function dragLeave() {
+                questionContainer.classList.remove('highlight');
+            }
+            
+            function drop(e) {
+                e.preventDefault();
+                questionContainer.classList.remove('highlight');
+                
+                const word = e.dataTransfer.getData('text/plain');
+                const draggedElement = document.querySelector(`.word-piece[data-word="${word}"]`);
+                
+                if (draggedElement) {
+                    const clone = draggedElement.cloneNode(true);
+                    clone.classList.remove('opacity-50');
+                    clone.classList.add('bg-indigo-300');
+                    
+                    // Add click event to return to word bank
+                    clone.addEventListener('click', function() {
+                        this.classList.add('fade-out');
+                        setTimeout(() => {
+                            this.remove();
+                            updateQuestionSlotStyle();
+                        }, 300);
+                    });
+                    
+                    questionContainer.appendChild(clone);
+                    draggedElement.remove();
+                    
+                    updateQuestionSlotStyle();
+                }
+            }
+            
+            function updateQuestionSlotStyle() {
+                if (questionContainer.children.length > 0) {
+                    questionContainer.classList.add('filled');
+                } else {
+                    questionContainer.classList.remove('filled');
+                }
+            }
+            
+            // Check answer
+            function checkAnswer() {
+                const levelQuestions = questions[currentLevel - 1];
+                const currentQuestion = levelQuestions[currentQuestionIndex];
+                
+                // Get user's answer
+                const userAnswer = Array.from(questionContainer.children).map(el => el.textContent);
+                
+                // Compare with correct answer
+                const isCorrect = arraysEqual(userAnswer, currentQuestion.correctOrder);
+                
+                // Show feedback
+                feedbackContainer.classList.remove('hidden');
+                
+                if (isCorrect) {
+                    feedbackTitle.textContent = "Correct!";
+                    feedbackTitle.className = "text-xl font-bold text-center mb-4 text-green-600";
+                    feedbackMessage.textContent = `Great job! "${currentQuestion.correctOrder.join(' ')}" is a correct Yes/No question.`;
+                    feedbackMessage.innerHTML += `<p class="text-gray-600 mt-2">${currentQuestion.translation}</p>`;
+                    
+                    // Update score
+                    score += 10;
+                    updateScoreDisplay();
+                    
+                    // Show next button
+                    nextBtn.classList.remove('hidden');
+                    
+                    // Add success animation
+                    questionContainer.classList.add('success-animation');
+                    setTimeout(() => {
+                        questionContainer.classList.remove('success-animation');
+                    }, 500);
+                } else {
+                    feedbackTitle.textContent = "Not quite right.";
+                    feedbackTitle.className = "text-xl font-bold text-center mb-4 text-red-600";
+                    feedbackMessage.textContent = "Try again! Remember that Yes/No questions start with an auxiliary verb.";
+                    
+                    // Add warning animation
+                    questionContainer.classList.add('warning');
+                    setTimeout(() => {
+                        questionContainer.classList.remove('warning');
+                    }, 500);
+                }
+                
+                // Show grammar explanation
+                grammarExplanation.textContent = currentQuestion.explanation;
+            }
+            
+            // Reset current question
+            function resetQuestion() {
+                // Clear containers
+                questionContainer.innerHTML = '';
+                wordBank.innerHTML = '';
+                
+                // Reload question
+                loadQuestion();
+                
+                // Hide feedback
+                feedbackContainer.classList.add('hidden');
+            }
+            
+            // Move to next question
+            function nextQuestion() {
+                currentQuestionIndex++;
+                
+                // Check if level completed
+                if (currentQuestionIndex >= questions[currentLevel - 1].length) {
+                    currentQuestionIndex = 0;
+                    
+                    // Check if there are more levels
+                    if (currentLevel < questions.length) {
+                        currentLevel++;
+                        updateLevelDisplay();
+                    }
+                }
+                
+                // Load next question
+                loadQuestion();
+            }
+            
+            // Helper functions
+            function arraysEqual(a, b) {
+                if (a.length !== b.length) return false;
+                for (let i = 0; i < a.length; i++) {
+                    if (a[i] !== b[i]) return false;
+                }
+                return true;
+            }
+            
+            function updateLevelDisplay() {
+                levelDisplay.textContent = currentLevel;
+            }
+            
+            function updateScoreDisplay() {
+                scoreDisplay.textContent = score;
+            }
+            
+            // TRANSFORM GAME
+            // Game state
+            let transformLevel = 1;
+            let transformScore = 0;
+            let transformQuestionIndex = 0;
+            
+            // Game elements
+            const statementContainer = document.getElementById('statement-container');
+            const transformAnswer = document.getElementById('transform-answer');
+            const transformCheckBtn = document.getElementById('transform-check-btn');
+            const transformNextBtn = document.getElementById('transform-next-btn');
+            const transformFeedbackContainer = document.getElementById('transform-feedback-container');
+            const transformFeedbackTitle = document.getElementById('transform-feedback-title');
+            const transformFeedbackMessage = document.getElementById('transform-feedback-message');
+            const transformGrammarExplanation = document.getElementById('transform-grammar-explanation');
+            const transformLevelDisplay = document.getElementById('transform-level-display');
+            const transformScoreDisplay = document.getElementById('transform-score-display');
+            
+            // Transform questions by level
+            const transformQuestions = [
+                // Level 1
+                [
+                    {
+                        statement: "She is a teacher.",
+                        question: "Is she a teacher?",
+                        explanation: "To form a Yes/No question with 'be' verbs, move the verb to the beginning of the sentence.",
+                        translation: "她是老師嗎？"
+                    },
+                    {
+                        statement: "They are at home.",
+                        question: "Are they at home?",
+                        explanation: "For 'be' verbs (am, is, are), move the verb before the subject to form a Yes/No question.",
+                        translation: "他們在家嗎？"
+                    },
+                    {
+                        statement: "You like pizza.",
+                        question: "Do you like pizza?",
+                        explanation: "For present simple with subjects other than 3rd person singular, add 'Do' at the beginning.",
+                        translation: "你喜歡披薩嗎？"
+                    }
+                ],
+                // Level 2
+                [
+                    {
+                        statement: "He speaks English.",
+                        question: "Does he speak English?",
+                        explanation: "For 3rd person singular in present simple, add 'Does' at the beginning and use the base form of the verb.",
+                        translation: "他說英語嗎？"
+                    },
+                    {
+                        statement: "They went to the store.",
+                        question: "Did they go to the store?",
+                        explanation: "For past simple, add 'Did' at the beginning and use the base form of the verb.",
+                        translation: "他們去商店了嗎？"
+                    },
+                    {
+                        statement: "She can swim.",
+                        question: "Can she swim?",
+                        explanation: "For modal verbs (can, could, will, etc.), move the modal verb to the beginning of the sentence.",
+                        translation: "她會游泳嗎？"
+                    }
+                ],
+                // Level 3
+                [
+                    {
+                        statement: "He has been working all day.",
+                        question: "Has he been working all day?",
+                        explanation: "For perfect tenses, move the first auxiliary verb (has/have) to the beginning of the sentence.",
+                        translation: "他一整天都在工作嗎？"
+                    },
+                    {
+                        statement: "They will arrive tomorrow.",
+                        question: "Will they arrive tomorrow?",
+                        explanation: "For future tense with 'will', move 'will' to the beginning of the sentence.",
+                        translation: "他們明天會到達嗎？"
+                    },
+                    {
+                        statement: "You would prefer coffee.",
+                        question: "Would you prefer coffee?",
+                        explanation: "For conditional statements with 'would', move 'would' to the beginning of the sentence.",
+                        translation: "你更喜歡咖啡嗎？"
+                    }
+                ]
+            ];
+            
+            // Initialize transform game
+            function initTransformGame() {
+                loadTransformQuestion();
+                updateTransformLevelDisplay();
+                updateTransformScoreDisplay();
+                
+                // Event listeners
+                transformCheckBtn.addEventListener('click', checkTransformAnswer);
+                transformNextBtn.addEventListener('click', nextTransformQuestion);
+            }
+            
+            // Load current transform question
+            function loadTransformQuestion() {
+                // Clear input
+                transformAnswer.value = '';
+                
+                // Get current question
+                const levelQuestions = transformQuestions[transformLevel - 1];
+                const currentQuestion = levelQuestions[transformQuestionIndex];
+                
+                // Display statement
+                statementContainer.textContent = currentQuestion.statement;
+                
+                // Hide feedback and next button
+                transformFeedbackContainer.classList.add('hidden');
+                transformNextBtn.classList.add('hidden');
+            }
+            
+            // Check transform answer
+            function checkTransformAnswer() {
+                const levelQuestions = transformQuestions[transformLevel - 1];
+                const currentQuestion = levelQuestions[transformQuestionIndex];
+                
+                // Get user's answer and normalize
+                const userAnswer = transformAnswer.value.trim();
+                
+                // Compare with correct answer (case insensitive and ignoring extra spaces)
+                const isCorrect = userAnswer.toLowerCase().replace(/\s+/g, ' ') === 
+                                 currentQuestion.question.toLowerCase().replace(/\s+/g, ' ');
+                
+                // Show feedback
+                transformFeedbackContainer.classList.remove('hidden');
+                
+                if (isCorrect) {
+                    transformFeedbackTitle.textContent = "Correct!";
+                    transformFeedbackTitle.className = "text-xl font-bold text-center mb-4 text-green-600";
+                    transformFeedbackMessage.textContent = `Great job! "${currentQuestion.question}" is the correct Yes/No question.`;
+                    transformFeedbackMessage.innerHTML += `<p class="text-gray-600 mt-2">${currentQuestion.translation}</p>`;
+                    
+                    // Update score
+                    transformScore += 10;
+                    updateTransformScoreDisplay();
+                    
+                    // Show next button
+                    transformNextBtn.classList.remove('hidden');
+                    
+                    // Add success animation
+                    transformAnswer.classList.add('success-animation');
+                    setTimeout(() => {
+                        transformAnswer.classList.remove('success-animation');
+                    }, 500);
+                } else {
+                    transformFeedbackTitle.textContent = "Not quite right.";
+                    transformFeedbackTitle.className = "text-xl font-bold text-center mb-4 text-red-600";
+                    transformFeedbackMessage.textContent = "Try again! Remember to move the auxiliary verb to the beginning.";
+                    transformFeedbackMessage.innerHTML += `<p class="text-gray-600 mt-2">Correct answer: ${currentQuestion.question}</p>`;
+                    
+                    // Add warning animation
+                    transformAnswer.classList.add('warning');
+                    setTimeout(() => {
+                        transformAnswer.classList.remove('warning');
+                    }, 500);
+                }
+                
+                // Show grammar explanation
+                transformGrammarExplanation.textContent = currentQuestion.explanation;
+            }
+            
+            // Move to next transform question
+            function nextTransformQuestion() {
+                transformQuestionIndex++;
+                
+                // Check if level completed
+                if (transformQuestionIndex >= transformQuestions[transformLevel - 1].length) {
+                    transformQuestionIndex = 0;
+                    
+                    // Check if there are more levels
+                    if (transformLevel < transformQuestions.length) {
+                        transformLevel++;
+                        updateTransformLevelDisplay();
+                    }
+                }
+                
+                // Load next question
+                loadTransformQuestion();
+            }
+            
+            function updateTransformLevelDisplay() {
+                transformLevelDisplay.textContent = transformLevel;
+            }
+            
+            function updateTransformScoreDisplay() {
+                transformScoreDisplay.textContent = transformScore;
+            }
+            
+            // Start both games
+            initGame();
+            initTransformGame();
+        });
+    </script>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'95b4fb84726c8458',t:'MTc1MTg2NjU2OC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
